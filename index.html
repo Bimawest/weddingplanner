@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Wedding Planner</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2, h3 { color: #2d6a4f; border-bottom: 2px solid #d8e2dc; padding-bottom: 5px; }
+        .status { font-weight: bold; margin-bottom: 20px; padding: 10px; border-radius: 5px; }
+        .loading { background: #e1ecf4; color: #39739d; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
+        th { background-color: #2d6a4f; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        
+        .negative { color: #d93025; font-weight: bold; }
+        .positive { color: #1e8e3e; font-weight: bold; }
+        small { color: #666; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>💍 Wedding Planner Database</h2>
+    <div id="status" class="status loading">Menghubungkan ke API Google Sheets...</div>
+
+    <h3>📋 Checklist Dokumen KUA</h3>
+    <table id="tabelPersiapan">
+        <thead>
+            <tr>
+                <th>Nama Dokumen</th>
+                <th>Status</th>
+                <th>Keterangan</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <br>
+
+    <h3>💰 Rincian Anggaran (Dana)</h3>
+    <table id="tabelDana">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Estimasi</th>
+                <th>Realisasi</th>
+                <th>Selisih</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+    // MASUKKAN URL WEB APP ANDA DI SINI
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbz6hvuD2dcxrjjUTElgCunKxmsRvDTJFISJDdLqpPyeR_M_WNLESc4EkVfOza-7wStR/exec";
+
+    async function ambilData() {
+        const statusEl = document.getElementById('status');
+        try {
+            const response = await fetch(webAppUrl);
+            const data = await response.json();
+
+            if (data.success) {
+                statusEl.innerText = "✅ Data berhasil disinkronkan";
+                statusEl.style.backgroundColor = "#d4edda";
+                statusEl.style.color = "#155724";
+
+                // 1. Render Tabel Persiapan
+                const tbodyP = document.querySelector("#tabelPersiapan tbody");
+                tbodyP.innerHTML = "";
+                data.persiapan.forEach(row => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${row[1]}</strong><small>${row[0]}</small></td>
+                        <td>${row[2]}</td>
+                        <td>${row[3] || '-'}</td>
+                    `;
+                    tbodyP.appendChild(tr);
+                });
+
+                // 2. Render Tabel Dana
+                const tbodyD = document.querySelector("#tabelDana tbody");
+                tbodyD.innerHTML = "";
+                data.dana.forEach(row => {
+                    const tr = document.createElement("tr");
+                    const selisih = row[3];
+                    const selisihClass = selisih < 0 ? "negative" : "positive";
+                    
+                    tr.innerHTML = `
+                        <td>${row[0]}</td>
+                        <td>${formatRupiah(row[1])}</td>
+                        <td>${formatRupiah(row[2])}</td>
+                        <td class="${selisihClass}">${formatRupiah(selisih)}</td>
+                    `;
+                    tbodyD.appendChild(tr);
+                });
+            }
+        } catch (error) {
+            statusEl.innerText = "❌ Gagal memuat data. Periksa URL Deployment Anda.";
+            statusEl.style.backgroundColor = "#f8d7da";
+            statusEl.style.color = "#721c24";
+            console.error(error);
+        }
+    }
+
+    function formatRupiah(angka) {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        }).format(angka);
+    }
+
+    ambilData();
+</script>
+
+</body>
+</html>
