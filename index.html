@@ -3,31 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Wedding Planner</title>
+    <title>Edit Wedding Database</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2, h3 { color: #2d6a4f; border-bottom: 2px solid #d8e2dc; padding-bottom: 5px; }
-        .status { font-weight: bold; margin-bottom: 20px; padding: 10px; border-radius: 5px; }
-        .loading { background: #e1ecf4; color: #39739d; }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
         th { background-color: #2d6a4f; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         
+        input[type="number"] { width: 110px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        select { padding: 6px; border-radius: 4px; cursor: pointer; }
+        
         .negative { color: #d93025; font-weight: bold; }
         .positive { color: #1e8e3e; font-weight: bold; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 1000; text-align: center; padding-top: 20%; font-weight: bold; }
         small { color: #666; display: block; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>💍 Wedding Planner Database</h2>
-    <div id="status" class="status loading">Menghubungkan ke API Google Sheets...</div>
+<div id="loader" class="loading-overlay">⏳ Menyimpan perubahan...</div>
 
-    <h3>📋 Checklist Dokumen KUA</h3>
+<div class="container">
+    <h2>💍 Edit Wedding Planner Database</h2>
+    <p id="status-msg">Memuat data...</p>
+
+    <h3>📋 Checklist Dokumen</h3>
     <table id="tabelPersiapan">
         <thead>
             <tr>
@@ -41,71 +44,86 @@
 
     <br>
 
-    <h3>💰 Rincian Anggaran (Dana)</h3>
+    <h3>💰 Rincian Anggaran</h3>
     <table id="tabelDana">
         <thead>
             <tr>
                 <th>Item</th>
                 <th>Estimasi</th>
                 <th>Realisasi</th>
-                <th>Selisih</th>
-            </tr>
+                <th>Selisih</th> </tr>
         </thead>
         <tbody></tbody>
     </table>
 </div>
 
 <script>
-    // MASUKKAN URL WEB APP ANDA DI SINI
     const webAppUrl = "https://script.google.com/macros/s/AKfycbz6hvuD2dcxrjjUTElgCunKxmsRvDTJFISJDdLqpPyeR_M_WNLESc4EkVfOza-7wStR/exec";
 
     async function ambilData() {
-        const statusEl = document.getElementById('status');
         try {
             const response = await fetch(webAppUrl);
             const data = await response.json();
-
             if (data.success) {
-                statusEl.innerText = "✅ Data berhasil disinkronkan";
-                statusEl.style.backgroundColor = "#d4edda";
-                statusEl.style.color = "#155724";
-
-                // 1. Render Tabel Persiapan
-                const tbodyP = document.querySelector("#tabelPersiapan tbody");
-                tbodyP.innerHTML = "";
-                data.persiapan.forEach(row => {
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `
-                        <td><strong>${row[1]}</strong><small>${row[0]}</small></td>
-                        <td>${row[2]}</td>
-                        <td>${row[3] || '-'}</td>
-                    `;
-                    tbodyP.appendChild(tr);
-                });
-
-                // 2. Render Tabel Dana
-                const tbodyD = document.querySelector("#tabelDana tbody");
-                tbodyD.innerHTML = "";
-                data.dana.forEach(row => {
-                    const tr = document.createElement("tr");
-                    const selisih = row[3];
-                    const selisihClass = selisih < 0 ? "negative" : "positive";
-                    
-                    tr.innerHTML = `
-                        <td>${row[0]}</td>
-                        <td>${formatRupiah(row[1])}</td>
-                        <td>${formatRupiah(row[2])}</td>
-                        <td class="${selisihClass}">${formatRupiah(selisih)}</td>
-                    `;
-                    tbodyD.appendChild(tr);
-                });
+                document.getElementById('status-msg').innerText = "✅ Terhubung ke Spreadsheet";
+                renderTabel(data);
             }
-        } catch (error) {
-            statusEl.innerText = "❌ Gagal memuat data. Periksa URL Deployment Anda.";
-            statusEl.style.backgroundColor = "#f8d7da";
-            statusEl.style.color = "#721c24";
-            console.error(error);
+        } catch (e) { 
+            document.getElementById('status-msg').innerText = "❌ Gagal memuat data";
+            console.error(e); 
         }
+    }
+
+    function renderTabel(data) {
+        // Render Persiapan
+        const tbodyP = document.querySelector("#tabelPersiapan tbody");
+        tbodyP.innerHTML = "";
+        data.persiapan.forEach((row, i) => {
+            if(!row[1]) return;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><strong>${row[1]}</strong><small>${row[0] || ''}</small></td>
+                <td>
+                    <select onchange="updatePersiapan(${i}, this.value)">
+                        <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
+                        <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
+                    </select>
+                </td>
+                <td><small>${row[3] || '-'}</small></td>
+            `;
+            tbodyP.appendChild(tr);
+        });
+
+        // Render Dana
+        const tbodyD = document.querySelector("#tabelDana tbody");
+        tbodyD.innerHTML = "";
+        data.dana.forEach((row, i) => {
+            if(!row[0]) return;
+            const tr = document.createElement("tr");
+            
+            // Hitung Selisih (Data dari Spreadsheet biasanya row[3], tapi kita hitung ulang agar akurat di UI)
+            const estimasi = Number(row[1]) || 0;
+            const realisasi = Number(row[2]) || 0;
+            const selisih = estimasi - realisasi; 
+            const selisihClass = selisih < 0 ? "negative" : "positive";
+
+            // Jika baris TOTAL, buat jadi read-only (tidak bisa diinput)
+            const isTotal = row[0] === "TOTAL";
+            
+            tr.innerHTML = `
+                <td style="${isTotal ? 'font-weight:bold' : ''}">${row[0]}</td>
+                <td>
+                    ${isTotal ? formatRupiah(estimasi) : `<input type="number" value="${estimasi}" onchange="updateDana(${i}, 'estimasi', this.value)">`}
+                </td>
+                <td>
+                    ${isTotal ? formatRupiah(realisasi) : `<input type="number" value="${realisasi}" onchange="updateDana(${i}, 'realisasi', this.value)">`}
+                </td>
+                <td class="${selisihClass}" style="font-weight:bold">
+                    ${formatRupiah(selisih)}
+                </td>
+            `;
+            tbodyD.appendChild(tr);
+        });
     }
 
     function formatRupiah(angka) {
@@ -116,8 +134,30 @@
         }).format(angka);
     }
 
+    async function kirimData(payload) {
+        document.getElementById('loader').style.display = "block";
+        try {
+            await fetch(webAppUrl, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            await ambilData(); // Refresh data agar perhitungan selisih/total terbaru muncul
+        } catch (e) {
+            alert("Gagal menyimpan data!");
+        } finally {
+            document.getElementById('loader').style.display = "none";
+        }
+    }
+
+    function updatePersiapan(rowIndex, val) {
+        kirimData({ type: "editPersiapan", row: rowIndex, value: val });
+    }
+
+    function updateDana(rowIndex, fieldName, val) {
+        kirimData({ type: "editDana", row: rowIndex, field: fieldName, value: Number(val) });
+    }
+
     ambilData();
 </script>
-
 </body>
 </html>
