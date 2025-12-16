@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Wedding Database</title>
+    <title>Wedding Planner Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
         .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2, h3 { color: #2d6a4f; border-bottom: 2px solid #d8e2dc; padding-bottom: 5px; }
+        .chart-box { height: 320px; margin-bottom: 30px; padding: 10px; background: #fff; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
         th { background-color: #2d6a4f; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
-        
         input[type="number"] { width: 110px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
         select { padding: 6px; border-radius: 4px; cursor: pointer; }
-        
         .negative { color: #d93025; font-weight: bold; }
         .positive { color: #1e8e3e; font-weight: bold; }
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 1000; text-align: center; padding-top: 20%; font-weight: bold; }
@@ -27,7 +27,7 @@
 <div id="loader" class="loading-overlay">⏳ Menyimpan perubahan...</div>
 
 <div class="container">
-    <h2>💍 Edit Wedding Planner Database</h2>
+    <h2>💍 Wedding Planner Dashboard</h2>
     <p id="status-msg">Memuat data...</p>
 
     <h3>📋 Checklist Dokumen</h3>
@@ -51,14 +51,21 @@
                 <th>Item</th>
                 <th>Estimasi</th>
                 <th>Realisasi</th>
-                <th>Selisih</th> </tr>
+                <th>Selisih</th>
+            </tr>
         </thead>
         <tbody></tbody>
     </table>
+
+    <h3>📊 Indikator Progres Pembayaran</h3>
+    <div class="chart-box">
+        <canvas id="budgetChart"></canvas>
+    </div>
 </div>
 
 <script>
     const webAppUrl = "https://script.google.com/macros/s/AKfycbz6hvuD2dcxrjjUTElgCunKxmsRvDTJFISJDdLqpPyeR_M_WNLESc4EkVfOza-7wStR/exec";
+    let myChart = null;
 
     async function ambilData() {
         try {
@@ -67,6 +74,7 @@
             if (data.success) {
                 document.getElementById('status-msg').innerText = "✅ Terhubung ke Spreadsheet";
                 renderTabel(data);
+                renderChart(data.dana);
             }
         } catch (e) { 
             document.getElementById('status-msg').innerText = "❌ Gagal memuat data";
@@ -75,7 +83,6 @@
     }
 
     function renderTabel(data) {
-        // Render Persiapan
         const tbodyP = document.querySelector("#tabelPersiapan tbody");
         tbodyP.innerHTML = "";
         data.persiapan.forEach((row, i) => {
@@ -94,68 +101,108 @@
             tbodyP.appendChild(tr);
         });
 
-        // Render Dana
         const tbodyD = document.querySelector("#tabelDana tbody");
         tbodyD.innerHTML = "";
         data.dana.forEach((row, i) => {
             if(!row[0]) return;
-            const tr = document.createElement("tr");
-            
-            // Hitung Selisih (Data dari Spreadsheet biasanya row[3], tapi kita hitung ulang agar akurat di UI)
             const estimasi = Number(row[1]) || 0;
             const realisasi = Number(row[2]) || 0;
             const selisih = estimasi - realisasi; 
-            const selisihClass = selisih < 0 ? "negative" : "positive";
-
-            // Jika baris TOTAL, buat jadi read-only (tidak bisa diinput)
             const isTotal = row[0] === "TOTAL";
-            
-            tr.innerHTML = `
-                <td style="${isTotal ? 'font-weight:bold' : ''}">${row[0]}</td>
-                <td>
-                    ${isTotal ? formatRupiah(estimasi) : `<input type="number" value="${estimasi}" onchange="updateDana(${i}, 'estimasi', this.value)">`}
-                </td>
-                <td>
-                    ${isTotal ? formatRupiah(realisasi) : `<input type="number" value="${realisasi}" onchange="updateDana(${i}, 'realisasi', this.value)">`}
-                </td>
-                <td class="${selisihClass}" style="font-weight:bold">
-                    ${formatRupiah(selisih)}
-                </td>
-            `;
-            tbodyD.appendChild(tr);
+
+            tbodyD.innerHTML += `
+                <tr style="${isTotal ? 'font-weight:bold; background:#e8f5e9;' : ''}">
+                    <td>${row[0]}</td>
+                    <td>${isTotal ? formatRupiah(estimasi) : `<input type="number" value="${estimasi}" onchange="updateDana(${i}, 'estimasi', this.value)">`}</td>
+                    <td>${isTotal ? formatRupiah(realisasi) : `<input type="number" value="${realisasi}" onchange="updateDana(${i}, 'realisasi', this.value)">`}</td>
+                    <td class="${selisih < 0 ? 'negative' : 'positive'}" style="font-weight:bold">${formatRupiah(selisih)}</td>
+                </tr>`;
         });
     }
 
-    function formatRupiah(angka) {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0
-        }).format(angka);
+    
+
+    function renderChart(dana) {
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        const items = dana.filter(r => r[0] && r[0] !== "TOTAL");
+        const labels = items.map(r => r[0]);
+
+        const dataBlue = items.map(r => {
+            const est = Number(r[1]) || 1;
+            const real = Number(r[2]) || 0;
+            return (real / est) * 100;
+        });
+
+        const dataRed = items.map(r => {
+            const est = Number(r[1]) || 1;
+            const real = Number(r[2]) || 0;
+            const sisa = ((est - real) / est) * 100;
+            return -sisa;
+        });
+
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { 
+                        label: 'Lunas', 
+                        data: dataBlue, 
+                        backgroundColor: '#4361ee', 
+                        borderRadius: 5,
+                        borderColor: '#333', // GARIS PEMBATAS PUTIH
+                        borderWidth: 2          // KETEBALAN GARIS
+                    },
+                    { 
+                        label: 'Belum', 
+                        data: dataRed, 
+                        backgroundColor: '#ef233c', 
+                        borderRadius: 5,
+                        borderColor: '#333', // GARIS PEMBATAS PUTIH
+                        borderWidth: 2          // KETEBALAN GARIS
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: { 
+                        stacked: true, 
+                        display: false, 
+                        min: -105, // Sedikit kelonggaran agar border tidak terpotong
+                        max: 105 
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.dataset.label}: ${Math.round(Math.abs(ctx.raw))}%`
+                        }
+                    }
+                }
+            }
+        });
     }
 
     async function kirimData(payload) {
         document.getElementById('loader').style.display = "block";
         try {
-            await fetch(webAppUrl, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-            await ambilData(); // Refresh data agar perhitungan selisih/total terbaru muncul
-        } catch (e) {
-            alert("Gagal menyimpan data!");
-        } finally {
-            document.getElementById('loader').style.display = "none";
-        }
+            await fetch(webAppUrl, { method: "POST", body: JSON.stringify(payload) });
+            await ambilData();
+        } catch (e) { alert("Gagal menyimpan!"); }
+        document.getElementById('loader').style.display = "none";
     }
 
-    function updatePersiapan(rowIndex, val) {
-        kirimData({ type: "editPersiapan", row: rowIndex, value: val });
+    function updatePersiapan(rowIndex, val) { kirimData({ type: "editPersiapan", row: rowIndex, value: val }); }
+    function updateDana(rowIndex, fieldName, val) { 
+        kirimData({ type: "editDana", row: rowIndex, field: fieldName, value: Number(val) }); 
     }
-
-    function updateDana(rowIndex, fieldName, val) {
-        kirimData({ type: "editDana", row: rowIndex, field: fieldName, value: Number(val) });
-    }
+    function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
 
     ambilData();
 </script>
