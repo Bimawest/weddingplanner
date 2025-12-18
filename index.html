@@ -96,49 +96,64 @@
     function renderTabel(data) {
         // --- RENDER PERSIAPAN ---
         const tbodyP = document.querySelector("#tabelPersiapan tbody");
-        tbodyP.innerHTML = "";
-        data.persiapan.forEach((row, i) => {
-            if(!row[1]) return;
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td><strong>${row[1]}</strong><small>${row[0] || ''}</small></td>
-                <td>
-                    <select onchange="updatePersiapan(${i}, this.value)">
-                        <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
-                        <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
-                        <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
-                    </select>
-                </td>
-                <td><small>${row[3] || '-'}</small></td>
-            `;
-            tbodyP.appendChild(tr);
-        });
+tbodyP.innerHTML = "";
+
+data.persiapan.forEach((row, i) => {
+    if(!row[1]) return;
+
+    // Logika warna berdasarkan nilai row[2]
+    const bgColor = row[2] === "✅ Selesai" ? "#28a745" : 
+                    row[2] === "☐ On Proses" ? "#00BFFF" : "#ef233c";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td><strong>${row[1]}</strong><small>${row[0] || ''}</small></td>
+        <td>
+            <select 
+                onchange="updatePersiapan(${i}, this.value, this)" 
+                style="background-color: ${bgColor}; color: white; font-weight: bold; border-radius: 4px; border: none; padding: 4px;"
+            >
+                <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
+                <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
+                <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
+            </select>
+        </td>
+        <td><small>${row[3] || '-'}</small></td>
+    `;
+    tbodyP.appendChild(tr);
+});
 
         // --- RENDER SESERAHAN ---
-        const tbodyS = document.querySelector("#tabelSeserahan tbody");
-        // PERBAIKAN: Sebelumnya tertulis tbodyP.innerHTML = "", seharusnya tbodyS
-        tbodyS.innerHTML = ""; 
-        
-        // PERBAIKAN: Cek apakah data.seserahan adalah array (karena di GAS Anda menggunakan .getValue() bukan .getValues())
-        if (Array.isArray(data.seserahan)) {
-            data.seserahan.forEach((row, i) => {
-                if(!row[1]) return; 
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>${row[0] || ''}</td>
-                    <td><strong>${row[1]}</strong></td>
-                    <td>
-                        <select onchange="updateSeserahan(${i}, 'Status', this.value)">
-                            <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
-                            <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
-                            <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
-                        </select>
-                    </td>
-                    <td><small>${row[3] || '-'}</small></td>
-                `;
-                tbodyS.appendChild(tr);
-            });
-        }
+const tbodyS = document.querySelector("#tabelSeserahan tbody");
+tbodyS.innerHTML = ""; 
+
+if (Array.isArray(data.seserahan)) {
+    data.seserahan.forEach((row, i) => {
+        if(!row[1]) return; 
+
+        // Tentukan warna background berdasarkan data awal
+        const bgColorS = row[2] === "✅ Selesai" ? "#28a745" : 
+                         row[2] === "☐ On Proses" ? "#00BFFF" : "#ef233c";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${row[0] || ''}</td>
+            <td><strong>${row[1]}</strong></td>
+            <td>
+                <select 
+                    onchange="updateSeserahan(${i}, 'Status', this.value, this)"
+                    style="background-color: ${bgColorS}; color: white; font-weight: bold; border-radius: 4px; border: none; padding: 4px;"
+                >
+                    <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
+                    <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
+                    <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
+                </select>
+            </td>
+            <td><small>${row[3] || '-'}</small></td>
+        `;
+        tbodyS.appendChild(tr);
+    });
+}
 
         // --- RENDER DANA ---
         const tbodyD = document.querySelector("#tabelDana tbody");
