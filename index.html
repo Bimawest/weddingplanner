@@ -6,25 +6,25 @@
     <title>Wedding Planner Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
         .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2, h3 { color: #2d6a4f; border-bottom: 2px solid #d8e2dc; padding-bottom: 5px; }
-        .chart-box { height: 320px; margin-bottom: 30px; padding: 10px; background: #fff; border: 1px solid #333; border-radius: 8px; }
+        .chart-box { height: 320px; margin-bottom: 30px; padding: 10px; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; margin-bottom: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
         th { background-color: #2d6a4f; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
-        input[type="number"] { width: 110px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-        select { padding: 6px; border-radius: 4px; cursor: pointer; }
+        input[type="number"] { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        select { padding: 6px; border-radius: 4px; cursor: pointer; border: none; color: white; font-weight: bold; width: 100%; }
         .negative { color: #d93025; font-weight: bold; }
         .positive { color: #1e8e3e; font-weight: bold; }
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 1000; text-align: center; padding-top: 20%; font-weight: bold; }
-        small { color: #666; display: block; font-style: italic; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 1000; text-align: center; padding-top: 20%; font-size: 1.2em; }
+        small { color: #666; display: block; font-style: italic; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading-overlay">⏳ Menyimpan perubahan...</div>
+<div id="loader" class="loading-overlay">⏳ Menyimpan perubahan ke Spreadsheet...</div>
 
 <div class="container">
     <h2>💍 Wedding Planner Dashboard</h2>
@@ -35,7 +35,7 @@
         <thead>
             <tr>
                 <th>Nama Dokumen</th>
-                <th>Status</th>
+                <th style="width: 150px;">Status</th>
                 <th>Keterangan</th>
             </tr>
         </thead>
@@ -48,7 +48,7 @@
             <tr>
                 <th>Kategori</th>
                 <th>Item</th>
-                <th>Status</th>
+                <th style="width: 150px;">Status</th>
                 <th>Keterangan</th>
             </tr>
         </thead>
@@ -78,6 +78,13 @@
     const webAppUrl = "https://script.google.com/macros/s/AKfycbz6hvuD2dcxrjjUTElgCunKxmsRvDTJFISJDdLqpPyeR_M_WNLESc4EkVfOza-7wStR/exec";
     let myChart = null;
 
+    // Helper untuk warna status
+    const getStatusColor = (val) => {
+        if (val === "✅ Selesai") return "#28a745";
+        if (val === "☐ On Proses") return "#00BFFF";
+        return "#ef233c";
+    };
+
     async function ambilData() {
         try {
             const response = await fetch(webAppUrl);
@@ -96,64 +103,46 @@
     function renderTabel(data) {
         // --- RENDER PERSIAPAN ---
         const tbodyP = document.querySelector("#tabelPersiapan tbody");
-tbodyP.innerHTML = "";
-
-data.persiapan.forEach((row, i) => {
-    if(!row[1]) return;
-
-    // Logika warna berdasarkan nilai row[2]
-    const bgColor = row[2] === "✅ Selesai" ? "#28a745" : 
-                    row[2] === "☐ On Proses" ? "#00BFFF" : "#ef233c";
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td><strong>${row[1]}</strong><small>${row[0] || ''}</small></td>
-        <td>
-            <select 
-                onchange="updatePersiapan(${i}, this.value, this)" 
-                style="background-color: ${bgColor}; color: white; font-weight: bold; border-radius: 4px; border: none; padding: 4px;"
-            >
-                <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
-                <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
-                <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
-            </select>
-        </td>
-        <td><small>${row[3] || '-'}</small></td>
-    `;
-    tbodyP.appendChild(tr);
-});
+        tbodyP.innerHTML = "";
+        data.persiapan.forEach((row, i) => {
+            if(!row[1]) return;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><strong>${row[1]}</strong><small>${row[0] || ''}</small></td>
+                <td>
+                    <select onchange="updatePersiapan(${i}, this.value, this)" style="background-color: ${getStatusColor(row[2])};">
+                        <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
+                        <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
+                        <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
+                    </select>
+                </td>
+                <td><small>${row[3] || '-'}</small></td>
+            `;
+            tbodyP.appendChild(tr);
+        });
 
         // --- RENDER SESERAHAN ---
-const tbodyS = document.querySelector("#tabelSeserahan tbody");
-tbodyS.innerHTML = ""; 
-
-if (Array.isArray(data.seserahan)) {
-    data.seserahan.forEach((row, i) => {
-        if(!row[1]) return; 
-
-        // Tentukan warna background berdasarkan data awal
-        const bgColorS = row[2] === "✅ Selesai" ? "#28a745" : 
-                         row[2] === "☐ On Proses" ? "#00BFFF" : "#ef233c";
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${row[0] || ''}</td>
-            <td><strong>${row[1]}</strong></td>
-            <td>
-                <select 
-                    onchange="updateSeserahan(${i}, 'Status', this.value, this)"
-                    style="background-color: ${bgColorS}; color: white; font-weight: bold; border-radius: 4px; border: none; padding: 4px;"
-                >
-                    <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
-                    <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
-                    <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
-                </select>
-            </td>
-            <td><small>${row[3] || '-'}</small></td>
-        `;
-        tbodyS.appendChild(tr);
-    });
-}
+        const tbodyS = document.querySelector("#tabelSeserahan tbody");
+        tbodyS.innerHTML = ""; 
+        if (data.seserahan) {
+            data.seserahan.forEach((row, i) => {
+                if(!row[1]) return; 
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row[0] || ''}</td>
+                    <td><strong>${row[1]}</strong></td>
+                    <td>
+                        <select onchange="updateSeserahan(${i}, 'Status', this.value, this)" style="background-color: ${getStatusColor(row[2])};">
+                            <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
+                            <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
+                            <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
+                        </select>
+                    </td>
+                    <td><input type="text" value="${row[3] || ''}" onchange="updateSeserahan(${i}, 'keterangan', this.value)"></td>
+                `;
+                tbodyS.appendChild(tr);
+            });
+        }
 
         // --- RENDER DANA ---
         const tbodyD = document.querySelector("#tabelDana tbody");
@@ -163,7 +152,7 @@ if (Array.isArray(data.seserahan)) {
             const estimasi = Number(row[1]) || 0;
             const realisasi = Number(row[2]) || 0;
             const selisih = estimasi - realisasi; 
-            const isTotal = row[0] === "TOTAL";
+            const isTotal = row[0].toUpperCase() === "TOTAL";
 
             const tr = document.createElement("tr");
             if(isTotal) tr.style.fontWeight = "bold";
@@ -179,20 +168,17 @@ if (Array.isArray(data.seserahan)) {
         });
     }
 
-    // --- CHART LOGIC ---
     function renderChart(dana) {
         const ctx = document.getElementById('budgetChart').getContext('2d');
         if (myChart) myChart.destroy();
 
-        const items = dana.filter(r => r[0] && r[0] !== "TOTAL");
+        const items = dana.filter(r => r[0] && r[0].toUpperCase() !== "TOTAL");
         const labels = items.map(r => r[0]);
-
         const dataBlue = items.map(r => {
             const est = Number(r[1]) || 1;
             const real = Number(r[2]) || 0;
             return Math.min((real / est) * 100, 100);
         });
-
         const dataRed = items.map(r => {
             const est = Number(r[1]) || 1;
             const real = Number(r[2]) || 0;
@@ -205,41 +191,38 @@ if (Array.isArray(data.seserahan)) {
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Lunas (%)', data: dataBlue, backgroundColor: '#4361ee', borderRadius: 5 },
-                    { label: 'Sisa (%)', data: dataRed, backgroundColor: '#ef233c', borderRadius: 5 }
+                    { label: 'Lunas (%)', data: dataBlue, backgroundColor: '#4361ee' },
+                    { label: 'Sisa (%)', data: dataRed, backgroundColor: '#ef233c' }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, display: false, min: -100, max: 100 }
-                }
+                scales: { x: { stacked: true }, y: { stacked: true, min: -100, max: 100 } }
             }
         });
     }
 
-    // --- API CALLS ---
     async function kirimData(payload) {
         document.getElementById('loader').style.display = "block";
         try {
-            // PERBAIKAN: Apps Script doPost memerlukan mode 'no-cors' atau penanganan khusus, 
-            // namun fetch POST biasa biasanya cukup jika di-deploy sebagai Web App 'Anyone'.
             await fetch(webAppUrl, { 
                 method: "POST", 
+                mode: "no-cors", // Penting untuk Apps Script Web App
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload) 
             });
-            // Refresh data setelah update
-            await ambilData();
+            // Beri sedikit jeda sebelum refresh karena no-cors tidak menunggu respons
+            setTimeout(ambilData, 1500); 
         } catch (e) { 
             console.error(e);
-            alert("Gagal menyimpan perubahan!"); 
+            alert("Terjadi kesalahan saat menyimpan."); 
+            document.getElementById('loader').style.display = "none";
         }
-        document.getElementById('loader').style.display = "none";
     }
 
-    function updatePersiapan(rowIndex, val) { 
+    function updatePersiapan(rowIndex, val, el) { 
+        el.style.backgroundColor = getStatusColor(val);
         kirimData({ type: "editPersiapan", row: rowIndex, value: val }); 
     }
     
@@ -247,8 +230,8 @@ if (Array.isArray(data.seserahan)) {
         kirimData({ type: "editDana", row: rowIndex, field: fieldName, value: Number(val) }); 
     }
 
-    // PERBAIKAN: Menambahkan fungsi updateSeserahan yang sebelumnya belum ada di script HTML
-    function updateSeserahan(rowIndex, fieldName, val) {
+    function updateSeserahan(rowIndex, fieldName, val, el) {
+        if(el) el.style.backgroundColor = getStatusColor(val);
         kirimData({ type: "editSeserahan", row: rowIndex, field: fieldName, value: val });
     }
 
@@ -256,7 +239,6 @@ if (Array.isArray(data.seserahan)) {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); 
     }
 
-    // Jalankan saat pertama kali buka
     ambilData();
 </script>
 </body>
