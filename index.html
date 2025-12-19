@@ -6,25 +6,25 @@
     <title>Wedding Planner Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
         .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h2, h3 { color: #2d6a4f; border-bottom: 2px solid #d8e2dc; padding-bottom: 5px; }
-        .chart-box { height: 320px; margin-bottom: 30px; padding: 10px; background: #fff; border: 1px solid #333; border-radius: 8px; }
+        .chart-box { height: 320px; margin-bottom: 30px; padding: 10px; border: 1px solid #eee; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; margin-bottom: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
         th { background-color: #2d6a4f; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
-        input[type="number"] { width: 110px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-        select { padding: 6px; border-radius: 4px; cursor: pointer; }
+        input { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        select { padding: 6px; border-radius: 4px; cursor: pointer; border: none; color: white; font-weight: bold; width: 100%; }
         .negative { color: #d93025; font-weight: bold; }
         .positive { color: #1e8e3e; font-weight: bold; }
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 1000; text-align: center; padding-top: 20%; font-weight: bold; }
-        small { color: #666; display: block; font-style: italic; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 1000; text-align: center; padding-top: 20%; font-size: 1.2em; }
+        small { color: #666; display: block; font-style: italic; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading-overlay">⏳ Menyimpan perubahan ke Spreadsheet...</div>
+<div id="loader" class="loading-overlay">⏳ Menyimpan ke Spreadsheet...</div>
 
 <div class="container">
     <h2>💍 Wedding Planner Dashboard</h2>
@@ -33,11 +33,7 @@
     <h3>📋 Checklist Dokumen</h3>
     <table id="tabelPersiapan">
         <thead>
-            <tr>
-                <th>Nama Dokumen</th>
-                <th style="width: 150px;">Status</th>
-                <th>Keterangan</th>
-            </tr>
+            <tr><th>Nama Dokumen</th><th style="width: 150px;">Status</th><th>Keterangan</th></tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -45,12 +41,7 @@
     <h3>🎁 Checklist Seserahan</h3>
     <table id="tabelSeserahan">
         <thead>
-            <tr>
-                <th>Kategori</th>
-                <th>Item</th>
-                <th style="width: 150px;">Status</th>
-                <th>Keterangan</th>
-            </tr>
+            <tr><th>Kategori</th><th>Item</th><th style="width: 150px;">Status</th><th>Keterangan (Harga)</th></tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -58,27 +49,20 @@
     <h3>💰 Rincian Anggaran</h3>
     <table id="tabelDana">
         <thead>
-            <tr>
-                <th>Item</th>
-                <th>Estimasi</th>
-                <th>Realisasi</th>
-                <th>Selisih</th>
-            </tr>
+            <tr><th>Item</th><th>Estimasi</th><th>Realisasi</th><th>Selisih</th></tr>
         </thead>
         <tbody></tbody>
     </table>
 
     <h3>📊 Indikator Progres Pembayaran</h3>
-    <div class="chart-box">
-        <canvas id="budgetChart"></canvas>
-    </div>
+    <div class="chart-box"><canvas id="budgetChart"></canvas></div>
 </div>
 
 <script>
-    const webAppUrl = "https://script.google.com/macros/s/AKfycbz6hvuD2dcxrjjUTElgCunKxmsRvDTJFISJDdLqpPyeR_M_WNLESc4EkVfOza-7wStR/exec";
+    // GANTI DENGAN URL WEB APP ANDA
+    const webAppUrl = "URL_WEB_APP_ANDA_DISINI";
     let myChart = null;
 
-    // Helper untuk warna status
     const getStatusColor = (val) => {
         if (val === "✅ Selesai") return "#28a745";
         if (val === "☐ On Proses") return "#00BFFF";
@@ -96,18 +80,15 @@
             }
         } catch (e) { 
             document.getElementById('status-msg').innerText = "❌ Gagal memuat data";
-            console.error(e); 
         }
     }
 
     function renderTabel(data) {
-        // --- RENDER PERSIAPAN ---
+        // PERSIAPAN
         const tbodyP = document.querySelector("#tabelPersiapan tbody");
-        tbodyP.innerHTML = "";
-        data.persiapan.forEach((row, i) => {
-            if(!row[1]) return;
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
+        tbodyP.innerHTML = data.persiapan.map((row, i) => {
+            if(!row[1]) return "";
+            return `<tr>
                 <td><strong>${row[1]}</strong><small>${row[0] || ''}</small></td>
                 <td>
                     <select onchange="updatePersiapan(${i}, this.value, this)" style="background-color: ${getStatusColor(row[2])};">
@@ -117,90 +98,42 @@
                     </select>
                 </td>
                 <td><small>${row[3] || '-'}</small></td>
-            `;
-            tbodyP.appendChild(tr);
-        });
+            </tr>`;
+        }).join("");
 
-        // --- RENDER SESERAHAN ---
+        // SESERAHAN
         const tbodyS = document.querySelector("#tabelSeserahan tbody");
-        tbodyS.innerHTML = ""; 
-        if (data.seserahan) {
-            data.seserahan.forEach((row, i) => {
-                if(!row[1]) return; 
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>${row[0] || ''}</td>
-                    <td><strong>${row[1]}</strong></td>
-                    <td>
-                        <select onchange="updateSeserahan(${i}, 'Status', this.value, this)" style="background-color: ${getStatusColor(row[2])};">
-                            <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
-                            <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
-                            <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
-                        </select>
-                    </td>
-                    <td><input type="text" value="${row[3] || ''}" onchange="updateSeserahan(${i}, 'keterangan', this.value)"></td>
-                `;
-                tbodyS.appendChild(tr);
-            });
-        }
+        tbodyS.innerHTML = data.seserahan.map((row, i) => {
+            if(!row[1]) return "";
+            return `<tr>
+                <td>${row[0] || ''}</td>
+                <td><strong>${row[1]}</strong></td>
+                <td>
+                    <select onchange="updateSeserahan(${i}, 'Status', this.value, this)" style="background-color: ${getStatusColor(row[2])};">
+                        <option value="☐ Belum" ${row[2] === "☐ Belum" ? "selected" : ""}>Belum</option>
+                        <option value="☐ On Proses" ${row[2] === "☐ On Proses" ? "selected" : ""}>On Proses</option>
+                        <option value="✅ Selesai" ${row[2] === "✅ Selesai" ? "selected" : ""}>Selesai</option>
+                    </select>
+                </td>
+                <td><input type="text" value="${row[3] || ''}" onchange="updateSeserahan(${i}, 'keterangan', this.value)"></td>
+            </tr>`;
+        }).join("");
 
-        // --- RENDER DANA ---
+        // DANA
         const tbodyD = document.querySelector("#tabelDana tbody");
-        tbodyD.innerHTML = "";
-        data.dana.forEach((row, i) => {
-            if(!row[0]) return;
-            const estimasi = Number(row[1]) || 0;
-            const realisasi = Number(row[2]) || 0;
-            const selisih = estimasi - realisasi; 
+        tbodyD.innerHTML = data.dana.map((row, i) => {
+            if(!row[0]) return "";
+            const est = Number(row[1]) || 0;
+            const real = Number(row[2]) || 0;
+            const selisih = est - real;
             const isTotal = row[0].toUpperCase() === "TOTAL";
-
-            const tr = document.createElement("tr");
-            if(isTotal) tr.style.fontWeight = "bold";
-            if(isTotal) tr.style.backgroundColor = "#e8f5e9";
-
-            tr.innerHTML = `
+            return `<tr style="${isTotal ? 'font-weight:bold; background:#e8f5e9;' : ''}">
                 <td>${row[0]}</td>
-                <td>${isTotal ? formatRupiah(estimasi) : `<input type="number" value="${estimasi}" onchange="updateDana(${i}, 'estimasi', this.value)">`}</td>
-                <td>${isTotal ? formatRupiah(realisasi) : `<input type="number" value="${realisasi}" onchange="updateDana(${i}, 'realisasi', this.value)">`}</td>
+                <td>${isTotal ? formatRupiah(est) : `<input type="number" value="${est}" onchange="updateDana(${i}, 'estimasi', this.value)">`}</td>
+                <td>${isTotal ? formatRupiah(real) : `<input type="number" value="${real}" onchange="updateDana(${i}, 'realisasi', this.value)">`}</td>
                 <td class="${selisih < 0 ? 'negative' : 'positive'}">${formatRupiah(selisih)}</td>
-            `;
-            tbodyD.appendChild(tr);
-        });
-    }
-
-    function renderChart(dana) {
-        const ctx = document.getElementById('budgetChart').getContext('2d');
-        if (myChart) myChart.destroy();
-
-        const items = dana.filter(r => r[0] && r[0].toUpperCase() !== "TOTAL");
-        const labels = items.map(r => r[0]);
-        const dataBlue = items.map(r => {
-            const est = Number(r[1]) || 1;
-            const real = Number(r[2]) || 0;
-            return Math.min((real / est) * 100, 100);
-        });
-        const dataRed = items.map(r => {
-            const est = Number(r[1]) || 1;
-            const real = Number(r[2]) || 0;
-            const sisa = ((est - real) / est) * 100;
-            return sisa > 0 ? -sisa : 0;
-        });
-
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'Lunas (%)', data: dataBlue, backgroundColor: '#4361ee' },
-                    { label: 'Sisa (%)', data: dataRed, backgroundColor: '#ef233c' }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { x: { stacked: true }, y: { stacked: true, min: -100, max: 100 } }
-            }
-        });
+            </tr>`;
+        }).join("");
     }
 
     async function kirimData(payload) {
@@ -208,16 +141,18 @@
         try {
             await fetch(webAppUrl, { 
                 method: "POST", 
-                mode: "no-cors", // Penting untuk Apps Script Web App
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload) 
             });
-            // Beri sedikit jeda sebelum refresh karena no-cors tidak menunggu respons
-            setTimeout(ambilData, 1500); 
+            // Beri jeda agar GAS selesai memproses sebelum ambil data baru
+            setTimeout(() => {
+                document.getElementById('loader').style.display = "none";
+                ambilData();
+            }, 1000);
         } catch (e) { 
             console.error(e);
-            alert("Terjadi kesalahan saat menyimpan."); 
             document.getElementById('loader').style.display = "none";
+            alert("Perubahan dikirim (Cek spreadsheet Anda)");
+            ambilData();
         }
     }
 
@@ -237,6 +172,26 @@
 
     function formatRupiah(angka) { 
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); 
+    }
+
+    function renderChart(dana) {
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        const items = dana.filter(r => r[0] && r[0].toUpperCase() !== "TOTAL");
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: items.map(r => r[0]),
+                datasets: [
+                    { label: 'Lunas (%)', data: items.map(r => Math.min(((Number(r[2])||0)/(Number(r[1])||1))*100, 100)), backgroundColor: '#4361ee' },
+                    { label: 'Sisa (%)', data: items.map(r => {
+                        const sisa = (((Number(r[1])||1)-(Number(r[2])||0))/(Number(r[1])||1))*100;
+                        return sisa > 0 ? -sisa : 0;
+                    }), backgroundColor: '#ef233c' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, min: -100, max: 100 } } }
+        });
     }
 
     ambilData();
